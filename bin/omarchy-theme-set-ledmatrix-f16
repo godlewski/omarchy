@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if omarchy-cmd-present inputmodule-control; then
+  inputmodule-control led-matrix --pattern gradient 2>/dev/null
+fi

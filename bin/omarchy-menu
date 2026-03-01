@@ -182,13 +182,17 @@ show_hardware_menu() {
 }
 
 show_style_menu() {
-  case $(menu "Style" "󰸌  Theme\n  Font\n  Background\n  Hyprland\n󱄄  Screensaver\n  About") in
+  local options="󰸌  Theme\n  Font\n  Background\n  Hyprland\n󱄄  Screensaver\n  About"
+  omarchy-hw-framework16 && omarchy-cmd-present inputmodule-control && options="$options\n󱡻  LED Matrix"
+
+  case $(menu "Style" "$options") in
   *Theme*) show_theme_menu ;;
   *Font*) show_font_menu ;;
   *Background*) omarchy-theme-bg-next ;;
   *Hyprland*) open_in_editor ~/.config/hypr/looknfeel.conf ;;
   *Screensaver*) open_in_editor ~/.config/omarchy/branding/screensaver.txt ;;
   *About*) open_in_editor ~/.config/omarchy/branding/about.txt ;;
+  *LED*) show_led_matrix_menu ;;
   *) show_main_menu ;;
   esac
 }
@@ -204,6 +208,86 @@ show_font_menu() {
   else
     omarchy-font-set "$theme"
   fi
+}
+
+show_led_matrix_menu() {
+  local devices
+  devices=$(omarchy-led-matrix-list)
+
+  if [[ -z "$devices" ]]; then
+    notify-send "No LED Matrix devices found" -u critical -t 3000
+    back_to show_style_menu
+    return
+  fi
+
+  local options="󰔎  All Devices"
+  while IFS= read -r dev; do
+    options="$options\n󰍹  $dev"
+  done <<< "$devices"
+
+  local choice
+  choice=$(menu "LED Matrix" "$options")
+
+  case "$choice" in
+  *All*) show_led_matrix_action_menu ;;
+  */dev/*) show_led_matrix_action_menu "$(echo "$choice" | grep -oP '/dev/\S+')" ;;
+  *) back_to show_style_menu ;;
+  esac
+}
+
+show_led_matrix_action_menu() {
+  local device="$1"
+  local device_args=()
+  [[ -n "$device" ]] && device_args=(--device "$device")
+
+  case $(menu "LED Matrix" "󰌪  Pattern\n󰃠  Brightness\n󰗊  Text\n  Percentage\n󰒲  Sleep\n󰏦  Wake\n󰶐  Off") in
+  *Pattern*) show_led_matrix_pattern_menu "${device_args[@]}" ;;
+  *Brightness*) show_led_matrix_brightness_menu "${device_args[@]}" ;;
+  *Text*)
+    local text
+    text=$(echo "" | omarchy-launch-walker --dmenu --width 295 --minheight 1 --maxheight 100 -p "Text (max 5)…" 2>/dev/null)
+    [[ -n "$text" && "$text" != "CNCLD" ]] && omarchy-led-matrix-set "${device_args[@]}" text "$text"
+    show_led_matrix_action_menu "$device"
+    ;;
+  *Percentage*)
+    local pct
+    pct=$(echo "" | omarchy-launch-walker --dmenu --width 295 --minheight 1 --maxheight 100 -p "Percentage…" 2>/dev/null)
+    [[ -n "$pct" && "$pct" != "CNCLD" ]] && omarchy-led-matrix-set "${device_args[@]}" percentage "$pct"
+    show_led_matrix_action_menu "$device"
+    ;;
+  *Sleep*) omarchy-led-matrix-set "${device_args[@]}" sleep; show_led_matrix_action_menu "$device" ;;
+  *Wake*) omarchy-led-matrix-set "${device_args[@]}" wake; show_led_matrix_action_menu "$device" ;;
+  *Off*) omarchy-led-matrix-set "${device_args[@]}" off; show_led_matrix_action_menu "$device" ;;
+  *) show_led_matrix_menu ;;
+  esac
+}
+
+show_led_matrix_pattern_menu() {
+  local device_args=("$@")
+
+  case $(menu "Pattern" "  Gradient\n  Double Gradient\n  Lotus Sideways\n  Lotus Top Down\n  Zigzag\n  All On\n  Percentage\n  Panic") in
+  *"Double Gradient"*) omarchy-led-matrix-set "${device_args[@]}" pattern double-gradient ;;
+  *"Lotus Sideways"*) omarchy-led-matrix-set "${device_args[@]}" pattern lotus-sideways ;;
+  *"Lotus Top Down"*) omarchy-led-matrix-set "${device_args[@]}" pattern lotus-top-down ;;
+  *Gradient*) omarchy-led-matrix-set "${device_args[@]}" pattern gradient ;;
+  *Zigzag*) omarchy-led-matrix-set "${device_args[@]}" pattern zigzag ;;
+  *"All On"*) omarchy-led-matrix-set "${device_args[@]}" pattern all-on ;;
+  *Percentage*) omarchy-led-matrix-set "${device_args[@]}" pattern percentage ;;
+  *Panic*) omarchy-led-matrix-set "${device_args[@]}" pattern panic ;;
+  *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
+  esac
+}
+
+show_led_matrix_brightness_menu() {
+  local device_args=("$@")
+
+  case $(menu "Brightness" "  25%\n  50%\n  75%\n  100%") in
+  *25*) omarchy-led-matrix-set "${device_args[@]}" brightness 64 ;;
+  *50*) omarchy-led-matrix-set "${device_args[@]}" brightness 128 ;;
+  *75*) omarchy-led-matrix-set "${device_args[@]}" brightness 192 ;;
+  *100*) omarchy-led-matrix-set "${device_args[@]}" brightness 255 ;;
+  *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
+  esac
 }
 
 show_setup_menu() {

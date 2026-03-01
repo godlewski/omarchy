@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Control Framework 16 LED Matrix input modules.
+#
+# Usage:
+#   omarchy-led-matrix-set [--device /dev/ttyACMx] <action> [args]
+#
+# Actions:
+#   pattern <name>       Set a display pattern
+#   brightness <0-255>   Set LED brightness
+#   text <string>        Display text (max 5 chars)
+#   percentage <0-100>   Display a percentage bar
+#   sleep                Put the matrix to sleep
+#   wake                 Wake the matrix from sleep
+#   off                  Turn off the matrix (brightness 0)
+
+if omarchy-cmd-missing inputmodule-control; then
+  exit 0
+fi
+
+device_args=()
+if [[ "$1" == "--device" ]]; then
+  device_args=(--serial-dev "$2")
+  shift 2
+fi
+
+action="$1"
+shift
+
+case "$action" in
+  pattern)    inputmodule-control "${device_args[@]}" led-matrix --pattern "$1" 2>/dev/null ;;
+  brightness) inputmodule-control "${device_args[@]}" led-matrix --brightness "$1" 2>/dev/null ;;
+  text)       inputmodule-control "${device_args[@]}" led-matrix --string "$1" 2>/dev/null ;;
+  percentage) inputmodule-control "${device_args[@]}" led-matrix --percentage "$1" 2>/dev/null ;;
+  sleep)      inputmodule-control "${device_args[@]}" led-matrix --sleeping true 2>/dev/null ;;
+  wake)       inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null ;;
+  off)        inputmodule-control "${device_args[@]}" led-matrix --brightness 0 2>/dev/null ;;
+esac
