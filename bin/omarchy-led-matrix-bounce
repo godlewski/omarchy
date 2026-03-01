@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Bouncing Omarchy logo animation for Framework 16 LED Matrix.
+# The logo bounces vertically up and down the 9x34 pixel display.
+#
+# Usage:
+#   omarchy-led-matrix-bounce [--device /dev/ttyACMx]
+
+if omarchy-cmd-missing inputmodule-control; then
+  exit 0
+fi
+
+device_args=()
+if [[ "$1" == "--device" ]]; then
+  device_args=(--serial-dev "$2")
+  shift 2
+fi
+
+FRAME_DIR=$(mktemp -d)
+trap "rm -rf $FRAME_DIR" EXIT
+
+# Generate all bounce frames
+python3 -c '
+import struct, zlib, os, sys
+D = sys.argv[1]
+L = [
+    [1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,1],
+    [1,0,1,1,1,0,1,1,1],
+    [1,0,1,0,0,0,1,0,1],
+    [1,1,1,0,0,0,1,0,1],
+    [1,0,1,0,0,0,1,0,1],
+    [1,0,1,1,1,1,1,0,1],
+    [1,0,0,0,1,0,0,0,1],
+    [1,1,1,1,1,0,1,1,1],
+]
+W, H, LH = 9, 34, 9
+def png(px):
+    def c(t, d):
+        x = t + d
+        return struct.pack(">I", len(d)) + x + struct.pack(">I", zlib.crc32(x) & 0xffffffff)
+    raw = b""
+    for r in px:
+        raw += b"\x00" + bytes(255 if v else 0 for v in r)
+    return b"\x89PNG\r\n\x1a\n" + c(b"IHDR", struct.pack(">IIBBBBB", W, H, 8, 0, 0, 0, 0)) + c(b"IDAT", zlib.compress(raw)) + c(b"IEND", b"")
+n = 0
+for y in list(range(H - LH + 1)) + list(range(H - LH - 1, 0, -1)):
+    f = [[0]*W for _ in range(H)]
+    for ly, row in enumerate(L):
+        for lx, val in enumerate(row):
+            if val:
+                f[y + ly][lx] = 1
+    open(os.path.join(D, f"f{n:04d}.png"), "wb").write(png(f))
+    n += 1
+' "$FRAME_DIR"
+
+# Play frames in a loop — bounces top to bottom and back
+while true; do
+  for frame in "$FRAME_DIR"/f*.png; do
+    inputmodule-control "${device_args[@]}" led-matrix --image-bw "$frame" 2>/dev/null
+    sleep 0.15
+  done
+done

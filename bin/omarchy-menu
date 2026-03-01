@@ -272,7 +272,8 @@ show_led_matrix_action_menu() {
 show_led_matrix_pattern_menu() {
   local device_args=("$@")
 
-  case $(menu "Pattern" "  Gradient\n  Double Gradient\n  Lotus Sideways\n  Lotus Top Down\n  Zigzag\n  All On\n  Percentage\n  Panic") in
+  case $(menu "Pattern" "  Omarchy Logo\n  Gradient\n  Double Gradient\n  Lotus Sideways\n  Lotus Top Down\n  Zigzag\n  All On\n  Percentage\n  Panic") in
+  *Omarchy*) omarchy-led-matrix-set "${device_args[@]}" logo ;;
   *"Double Gradient"*) omarchy-led-matrix-set "${device_args[@]}" pattern double-gradient ;;
   *"Lotus Sideways"*) omarchy-led-matrix-set "${device_args[@]}" pattern lotus-sideways ;;
   *"Lotus Top Down"*) omarchy-led-matrix-set "${device_args[@]}" pattern lotus-top-down ;;
@@ -300,11 +301,12 @@ show_led_matrix_brightness_menu() {
 show_led_matrix_animation_menu() {
   local device_args=("$@")
 
-  case $(menu "Animation" "󰸞  Breathing\n󰔟  Blinking\n  Clock\n󰗅  Equalizer") in
+  case $(menu "Animation" "󰸞  Breathing\n󰔟  Blinking\n  Clock\n󰗅  Equalizer\n  Bouncing Logo") in
   *Breathing*) omarchy-led-matrix-set "${device_args[@]}" animate breathing ;;
   *Blinking*) omarchy-led-matrix-set "${device_args[@]}" animate blinking ;;
   *Clock*) omarchy-led-matrix-set "${device_args[@]}" animate clock ;;
   *Equalizer*) omarchy-led-matrix-set "${device_args[@]}" animate eq ;;
+  *Bouncing*) omarchy-led-matrix-set "${device_args[@]}" animate bounce ;;
   *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
   esac
 }

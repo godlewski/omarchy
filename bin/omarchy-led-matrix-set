@@ -38,18 +38,23 @@ start_animation() {
   local anim_type="$1"
   local flag
 
-  case "$anim_type" in
+    case "$anim_type" in
     breathing) flag="--breathing" ;;
     blinking)  flag="--blinking" ;;
     clock)     flag="--clock" ;;
     eq)        flag="--random-eq" ;;
+    bounce)    flag="bounce" ;;
     *) return 1 ;;
   esac
 
   stop_animation
   mkdir -p "$ANIM_STATE_DIR"
 
-  inputmodule-control "${device_args[@]}" led-matrix "$flag" 2>/dev/null &
+  if [[ "$flag" == "bounce" ]]; then
+    omarchy-led-matrix-bounce "${device_args[@]}" &
+  else
+    inputmodule-control "${device_args[@]}" led-matrix "$flag" 2>/dev/null &
+  fi
   echo $! > "$ANIM_PID_FILE"
   echo "$anim_type" > "$ANIM_TYPE_FILE"
   disown
@@ -71,6 +76,7 @@ case "$action" in
   percentage)       stop_animation; inputmodule-control "${device_args[@]}" led-matrix --percentage "$1" 2>/dev/null ;;
   sleep)            stop_animation; inputmodule-control "${device_args[@]}" led-matrix --sleeping true 2>/dev/null ;;
   wake)             inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null ;;
+  logo)             stop_animation; inputmodule-control "${device_args[@]}" led-matrix --image-bw "$OMARCHY_PATH/default/led-matrix/omarchy-logo.png" 2>/dev/null ;;
   off)              stop_animation; inputmodule-control "${device_args[@]}" led-matrix --brightness 0 2>/dev/null ;;
   animate)          start_animation "$1" ;;
   stop-animation)   stop_animation ;;
