@@ -67,7 +67,7 @@ shift
 case "$action" in
   pattern)          stop_animation; inputmodule-control "${device_args[@]}" led-matrix --pattern "$1" 2>/dev/null ;;
   brightness)       inputmodule-control "${device_args[@]}" led-matrix --brightness "$1" 2>/dev/null ;;
-  text)             stop_animation; inputmodule-control "${device_args[@]}" led-matrix --string "$1" 2>/dev/null ;;
+  text)             stop_animation; inputmodule-control "${device_args[@]}" led-matrix --string "${1^^}" 2>/dev/null ;;
   percentage)       stop_animation; inputmodule-control "${device_args[@]}" led-matrix --percentage "$1" 2>/dev/null ;;
   sleep)            stop_animation; inputmodule-control "${device_args[@]}" led-matrix --sleeping true 2>/dev/null ;;
   wake)             inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null ;;
