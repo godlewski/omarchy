@@ -13,10 +13,47 @@
 #   sleep                Put the matrix to sleep
 #   wake                 Wake the matrix from sleep
 #   off                  Turn off the matrix (brightness 0)
+#   animate <type>       Start a background animation (breathing, blinking, clock, eq)
+#   stop-animation       Stop any running background animation
+#   animation-status     Print the running animation type, or nothing if idle
+
+ANIM_STATE_DIR="$HOME/.local/state/omarchy"
+ANIM_PID_FILE="$ANIM_STATE_DIR/led-matrix-anim.pid"
+ANIM_TYPE_FILE="$ANIM_STATE_DIR/led-matrix-anim.type"
 
 if omarchy-cmd-missing inputmodule-control; then
   exit 0
 fi
+
+stop_animation() {
+  if [[ -f "$ANIM_PID_FILE" ]]; then
+    local pid
+    pid=$(cat "$ANIM_PID_FILE")
+    kill "$pid" 2>/dev/null
+    rm -f "$ANIM_PID_FILE" "$ANIM_TYPE_FILE"
+  fi
+}
+
+start_animation() {
+  local anim_type="$1"
+  local flag
+
+  case "$anim_type" in
+    breathing) flag="--breathing" ;;
+    blinking)  flag="--blinking" ;;
+    clock)     flag="--clock" ;;
+    eq)        flag="--random-eq" ;;
+    *) return 1 ;;
+  esac
+
+  stop_animation
+  mkdir -p "$ANIM_STATE_DIR"
+
+  inputmodule-control "${device_args[@]}" led-matrix "$flag" 2>/dev/null &
+  echo $! > "$ANIM_PID_FILE"
+  echo "$anim_type" > "$ANIM_TYPE_FILE"
+  disown
+}
 
 device_args=()
 if [[ "$1" == "--device" ]]; then
@@ -28,11 +65,20 @@ action="$1"
 shift
 
 case "$action" in
-  pattern)    inputmodule-control "${device_args[@]}" led-matrix --pattern "$1" 2>/dev/null ;;
-  brightness) inputmodule-control "${device_args[@]}" led-matrix --brightness "$1" 2>/dev/null ;;
-  text)       inputmodule-control "${device_args[@]}" led-matrix --string "$1" 2>/dev/null ;;
-  percentage) inputmodule-control "${device_args[@]}" led-matrix --percentage "$1" 2>/dev/null ;;
-  sleep)      inputmodule-control "${device_args[@]}" led-matrix --sleeping true 2>/dev/null ;;
-  wake)       inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null ;;
-  off)        inputmodule-control "${device_args[@]}" led-matrix --brightness 0 2>/dev/null ;;
+  pattern)          stop_animation; inputmodule-control "${device_args[@]}" led-matrix --pattern "$1" 2>/dev/null ;;
+  brightness)       inputmodule-control "${device_args[@]}" led-matrix --brightness "$1" 2>/dev/null ;;
+  text)             stop_animation; inputmodule-control "${device_args[@]}" led-matrix --string "$1" 2>/dev/null ;;
+  percentage)       stop_animation; inputmodule-control "${device_args[@]}" led-matrix --percentage "$1" 2>/dev/null ;;
+  sleep)            stop_animation; inputmodule-control "${device_args[@]}" led-matrix --sleeping true 2>/dev/null ;;
+  wake)             inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null ;;
+  off)              stop_animation; inputmodule-control "${device_args[@]}" led-matrix --brightness 0 2>/dev/null ;;
+  animate)          start_animation "$1" ;;
+  stop-animation)   stop_animation ;;
+  animation-status)
+    if [[ -f "$ANIM_PID_FILE" ]] && kill -0 "$(cat "$ANIM_PID_FILE")" 2>/dev/null; then
+      cat "$ANIM_TYPE_FILE" 2>/dev/null
+    else
+      rm -f "$ANIM_PID_FILE" "$ANIM_TYPE_FILE"
+    fi
+    ;;
 esac

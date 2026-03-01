@@ -240,8 +240,15 @@ show_led_matrix_action_menu() {
   local device_args=()
   [[ -n "$device" ]] && device_args=(--device "$device")
 
-  case $(menu "LED Matrix" "󰌪  Pattern\n󰃠  Brightness\n󰗊  Text\n  Percentage\n󰒲  Sleep\n󰏦  Wake\n󰶐  Off") in
+  local options="󰌪  Pattern\n󰃞  Animation\n󰃠  Brightness\n󰗊  Text\n  Percentage\n󰒲  Sleep\n󰏦  Wake\n󰶐  Off"
+  local running_anim
+  running_anim=$(omarchy-led-matrix-set animation-status)
+  [[ -n "$running_anim" ]] && options="$options\n  Stop Animation ($running_anim)"
+
+  case $(menu "LED Matrix" "$options") in
   *Pattern*) show_led_matrix_pattern_menu "${device_args[@]}" ;;
+  *"Stop Animation"*) omarchy-led-matrix-set "${device_args[@]}" stop-animation; show_led_matrix_action_menu "$device" ;;
+  *Animation*) show_led_matrix_animation_menu "${device_args[@]}" ;;
   *Brightness*) show_led_matrix_brightness_menu "${device_args[@]}" ;;
   *Text*)
     local text
@@ -286,6 +293,18 @@ show_led_matrix_brightness_menu() {
   *50*) omarchy-led-matrix-set "${device_args[@]}" brightness 128 ;;
   *75*) omarchy-led-matrix-set "${device_args[@]}" brightness 192 ;;
   *100*) omarchy-led-matrix-set "${device_args[@]}" brightness 255 ;;
+  *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
+  esac
+}
+
+show_led_matrix_animation_menu() {
+  local device_args=("$@")
+
+  case $(menu "Animation" "󰸞  Breathing\n󰔟  Blinking\n  Clock\n󰗅  Equalizer") in
+  *Breathing*) omarchy-led-matrix-set "${device_args[@]}" animate breathing ;;
+  *Blinking*) omarchy-led-matrix-set "${device_args[@]}" animate blinking ;;
+  *Clock*) omarchy-led-matrix-set "${device_args[@]}" animate clock ;;
+  *Equalizer*) omarchy-led-matrix-set "${device_args[@]}" animate eq ;;
   *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
   esac
 }
