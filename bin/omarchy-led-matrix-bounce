@@ -2,25 +2,24 @@
 
 # Bouncing Omarchy logo animation for Framework 16 LED Matrix.
 # The logo bounces vertically up and down the 9x34 pixel display.
+# Frames are cached after first generation for instant startup.
 #
 # Usage:
-#   omarchy-led-matrix-bounce [--device /dev/ttyACMx]
+#   omarchy-led-matrix-bounce [--serial-dev /dev/ttyACMx ...]
 
 if omarchy-cmd-missing inputmodule-control; then
   exit 0
 fi
 
-device_args=()
-if [[ "$1" == "--device" ]]; then
-  device_args=(--serial-dev "$2")
-  shift 2
-fi
+# Collect all passed args (may have multiple --serial-dev flags)
+device_args=("$@")
 
-FRAME_DIR=$(mktemp -d)
-trap "rm -rf $FRAME_DIR" EXIT
+CACHE_DIR="$HOME/.cache/omarchy/led-matrix-bounce"
 
-# Generate all bounce frames
-python3 -c '
+# Generate frames if not cached
+if [[ ! -d "$CACHE_DIR" ]] || [[ -z "$(ls -A "$CACHE_DIR" 2>/dev/null)" ]]; then
+  mkdir -p "$CACHE_DIR"
+  python3 -c '
 import struct, zlib, os, sys
 D = sys.argv[1]
 L = [
@@ -52,12 +51,31 @@ for y in list(range(H - LH + 1)) + list(range(H - LH - 1, 0, -1)):
                 f[y + ly][lx] = 1
     open(os.path.join(D, f"f{n:04d}.png"), "wb").write(png(f))
     n += 1
-' "$FRAME_DIR"
+' "$CACHE_DIR"
+fi
 
-# Play frames in a loop — bounces top to bottom and back
+# Discover devices for parallel frame sending
+devices=()
+if [[ ${#device_args[@]} -gt 0 ]]; then
+  for ((i=0; i<${#device_args[@]}; i++)); do
+    if [[ "${device_args[$i]}" == "--serial-dev" ]]; then
+      devices+=("${device_args[$((i+1))]}")
+      ((i++))
+    fi
+  done
+else
+  while IFS= read -r dev; do
+    devices+=("$dev")
+  done < <(omarchy-led-matrix-list)
+fi
+
+# Play frames in a loop — send to all devices in parallel each frame
 while true; do
-  for frame in "$FRAME_DIR"/f*.png; do
-    inputmodule-control "${device_args[@]}" led-matrix --image-bw "$frame" 2>/dev/null
-    sleep 0.15
+  for frame in "$CACHE_DIR"/f*.png; do
+    for dev in "${devices[@]}"; do
+      inputmodule-control --serial-dev "$dev" led-matrix --image-bw "$frame" 2>/dev/null &
+    done
+    wait
+    sleep 0.1
   done
 done

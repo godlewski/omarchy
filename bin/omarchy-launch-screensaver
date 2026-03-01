@@ -20,7 +20,7 @@ walker -q
 
 # Start LED matrix bounce animation on Framework 16
 if omarchy-hw-framework16 && omarchy-cmd-present inputmodule-control; then
-  omarchy-led-matrix-set animate bounce
+  omarchy-led-matrix-set animate bounce &
 fi
 
 focused=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true).name')
