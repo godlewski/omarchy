@@ -50,6 +50,10 @@ start_animation() {
   stop_animation
   mkdir -p "$ANIM_STATE_DIR"
 
+  # Ensure matrix is awake and visible before starting animation
+  inputmodule-control "${device_args[@]}" led-matrix --sleeping false 2>/dev/null
+  inputmodule-control "${device_args[@]}" led-matrix --brightness 200 2>/dev/null
+
   if [[ "$flag" == "bounce" ]]; then
     omarchy-led-matrix-bounce "${device_args[@]}" &
   else
