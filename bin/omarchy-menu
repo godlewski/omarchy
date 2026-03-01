@@ -240,7 +240,7 @@ show_led_matrix_action_menu() {
   local device_args=()
   [[ -n "$device" ]] && device_args=(--device "$device")
 
-  local options="󰌪  Pattern\n󰃞  Animation\n󰃠  Brightness\n󰗊  Text\n  Percentage\n󰒲  Sleep\n󰏦  Wake\n󰶐  Off"
+  local options="󰌪  Pattern\n󰃞  Animation\n󰃠  Brightness\n󰗊  Text\n  Percentage\n󱄄  Screensaver\n󰒲  Sleep\n󰏦  Wake\n󰶐  Off"
   local running_anim
   running_anim=$(omarchy-led-matrix-set animation-status)
   [[ -n "$running_anim" ]] && options="$options\n  Stop Animation ($running_anim)"
@@ -250,6 +250,7 @@ show_led_matrix_action_menu() {
   *"Stop Animation"*) omarchy-led-matrix-set "${device_args[@]}" stop-animation; show_led_matrix_action_menu "$device" ;;
   *Animation*) show_led_matrix_animation_menu "${device_args[@]}" ;;
   *Brightness*) show_led_matrix_brightness_menu "${device_args[@]}" ;;
+  *Screensaver*) show_led_matrix_screensaver_menu; show_led_matrix_action_menu "$device" ;;
   *Text*)
     local text
     text=$(echo "" | omarchy-launch-walker --dmenu --width 295 --minheight 1 --maxheight 100 -p "Text (max 5)…" 2>/dev/null)
@@ -308,6 +309,39 @@ show_led_matrix_animation_menu() {
   *Equalizer*) omarchy-led-matrix-set "${device_args[@]}" animate eq ;;
   *Bouncing*) omarchy-led-matrix-set "${device_args[@]}" animate bounce ;;
   *) show_led_matrix_action_menu "$(echo "${device_args[@]}" | grep -oP '/dev/\S+')" ;;
+  esac
+}
+
+show_led_matrix_screensaver_menu() {
+  local state_file="$HOME/.local/state/omarchy/led-matrix-screensaver"
+  local current
+  current=$(cat "$state_file" 2>/dev/null)
+  [[ -z "$current" ]] && current="bounce"
+
+  local options="  Bouncing Logo\n󰸞  Breathing\n󰔟  Blinking\n  Clock\n󰗅  Equalizer\n  Omarchy Logo\n  Gradient\n  All On\n󰶐  Off"
+
+  local labels=("bounce" "breathing" "blinking" "clock" "eq" "logo" "gradient" "all-on" "off")
+  local display=("Bouncing" "Breathing" "Blinking" "Clock" "Equalizer" "Omarchy" "Gradient" "All On" "Off")
+
+  # Show current setting in prompt
+  local current_label="$current"
+  for i in "${!labels[@]}"; do
+    [[ "${labels[$i]}" == "$current" ]] && current_label="${display[$i]}"
+  done
+
+  local choice
+  choice=$(menu "Screensaver ($current_label)" "$options")
+
+  case "$choice" in
+  *Bouncing*) echo "bounce" > "$state_file" ;;
+  *Breathing*) echo "breathing" > "$state_file" ;;
+  *Blinking*) echo "blinking" > "$state_file" ;;
+  *Clock*) echo "clock" > "$state_file" ;;
+  *Equalizer*) echo "eq" > "$state_file" ;;
+  *Omarchy*) echo "logo" > "$state_file" ;;
+  *Gradient*) echo "gradient" > "$state_file" ;;
+  *"All On"*) echo "all-on" > "$state_file" ;;
+  *Off*) echo "off" > "$state_file" ;;
   esac
 }
 
