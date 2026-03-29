@@ -18,6 +18,20 @@ fi
 # Silently quit Walker on overlay
 walker -q
 
+# Start LED matrix screensaver on Framework 16
+if omarchy-hw-framework16 && omarchy-cmd-present inputmodule-control; then
+  led_mode=$(cat ~/.local/state/omarchy/led-matrix-screensaver 2>/dev/null)
+  [[ -z "$led_mode" ]] && led_mode="bounce"
+
+  if [[ "$led_mode" != "off" ]]; then
+    case "$led_mode" in
+      bounce|breathing|blinking|clock|eq) omarchy-led-matrix-set animate "$led_mode" & ;;
+      logo) omarchy-led-matrix-set logo & ;;
+      *) omarchy-led-matrix-set pattern "$led_mode" & ;;
+    esac
+  fi
+fi
+
 focused=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true).name')
 terminal=$(xdg-terminal-exec --print-id)
 

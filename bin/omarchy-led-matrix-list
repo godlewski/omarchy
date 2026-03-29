@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# List connected Framework 16 LED Matrix input modules.
+# Outputs one line per device: /dev/ttyACMx
+
+if omarchy-cmd-missing inputmodule-control; then
+  exit 0
+fi
+
+inputmodule-control --list 2>/dev/null | awk '
+  /^\/dev\/tty/ { dev=$1 }
+  /Product.*LED_Matrix/ { print dev }
+'
